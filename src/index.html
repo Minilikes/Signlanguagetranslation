@@ -1,0 +1,122 @@
+<html>
+<head>
+    <title>Sign Language Detector</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: grid;
+            place-items: center;
+            min-height: 90vh;
+            background: #f4f7f6;
+            color: #333;
+        }
+        main {
+            text-align: center;
+            background: #ffffff;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1B4D3E;
+        }
+        video {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            /* Flip the video to be a "mirror" */
+            transform: scaleX(-1); 
+        }
+        #results {
+            margin-top: 1rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        #lang-select {
+            margin-top: 1rem;
+        }
+        #lang-select label {
+            font-weight: 500;
+        }
+        /* This canvas is hidden, it's just for capturing frames */
+        canvas {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <main>
+        <h1>🤟 Sign Language Detector</h1>
+        <video id="video" width="640" height="480" autoplay muted></video>
+        
+        <div id="lang-select">
+            <label><input type="radio" name="language" value="english" checked> English 🇬🇧</label>
+            <label><input type="radio" name="language" value="hindi"> Hindi 🇮🇳</label>
+        </div>
+        
+        <div id="results">
+            <div id="translation">---</div>
+            <div id="gesture-name" style="font-size: 0.9rem; color: #777;">(None)</div>
+        </div>
+        
+        <!-- This canvas is used to grab frames from the video -->
+        <canvas id="canvas" width="640" height="480"></canvas>
+    </main>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        const translationEl = document.getElementById('translation');
+        const gestureNameEl = document.getElementById('gesture-name');
+
+        // 1. Get Webcam Access
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Error accessing webcam: ", err);
+                alert("Could not access webcam. Please allow webcam access and refresh.");
+            });
+
+        // 2. Set up the processing loop
+        setInterval(() => {
+            // Draw the current video frame onto the hidden canvas
+            context.drawImage(video, 0, 0, 640, 480);
+            
+            // Convert the canvas image to a base64 string
+            const dataURL = canvas.toDataURL('image/jpeg');
+            
+            // Get the selected language
+            const selectedLang = document.querySelector('input[name="language"]:checked').value;
+
+            // 3. Send the image to the back-end
+            fetch('http://localhost:5000/recognize', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ image: dataURL })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // 4. Display the results from the back-end
+                gestureNameEl.textContent = `(${data.gesture_name})`;
+                
+                if (selectedLang === 'english') {
+                    translationEl.textContent = data.translations.english;
+                } else {
+                    translationEl.textContent = data.translations.hindi;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                translationEl.textContent = "Server Error";
+            });
+
+        }, 250); // Send a frame every 250ms (4 times per second)
+    </script>
+
+</body>
+</html>

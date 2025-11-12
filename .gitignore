@@ -1,0 +1,13 @@
+﻿venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+models/
+jules-scratch/verification/verification.png
+.vscode/
+.env
+.DS_Store
+*.log
+venv-create.log
